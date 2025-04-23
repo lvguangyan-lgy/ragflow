@@ -29,6 +29,8 @@ export default {
   add_llm: `${api_host}/llm/add_llm`,
   delete_llm: `${api_host}/llm/delete_llm`,
   deleteFactory: `${api_host}/llm/delete_factory`,
+  share_llm: `${api_host}/llm/share_llm`,
+  shared_llm_list: `${api_host}/llm/shared_llm_list`,
 
   // knowledge base
   kb_list: `${api_host}/kb/list`,

@@ -19,6 +19,7 @@ import os
 from flask import request
 from flask_login import login_required, current_user
 from api.db.services.llm_service import LLMFactoriesService, TenantLLMService, LLMService
+from api.db.services.user_service import UserTenantService, TenantService, UserService
 from api import settings
 from api.utils.api_utils import server_error_response, get_data_error_result, validate_request
 from api.db import StatusEnum, LLMType
@@ -359,5 +360,102 @@ def list_app():
             res[m["fid"]].append(m)
 
         return get_json_result(data=res)
+    except Exception as e:
+        return server_error_response(e)
+
+@manager.route('/share_llm', methods=['POST'])  # noqa: F821
+@login_required
+@validate_request("llm_factory", "llm_name", "tenant_ids")
+def share_llm():
+    """
+    Share an LLM model configuration with other team members.
+    """
+    try:
+        req = request.json
+        llm_factory = req["llm_factory"]
+        llm_name = req["llm_name"]
+        tenant_ids = req["tenant_ids"]
+        make_default = req.get("make_default", False)
+        
+        # Get the current user's LLM configuration using TenantLLMService
+        current_user_llms = TenantLLMService.query(
+            tenant_id=current_user.id,
+            llm_factory=llm_factory,
+            llm_name=llm_name
+        )
+        
+        if not current_user_llms:
+            return get_data_error_result(message=f"LLM model {llm_name} not found.")
+        
+        current_user_llm = current_user_llms[0].to_dict()
+        
+        # Share with each tenant
+        for tenant_id in tenant_ids:
+            # Check if the tenant exists and the current user has permission to share with them
+            if tenant_id == current_user.id:
+                continue  # Skip sharing with self
+                
+            user_tenants = UserTenantService.query(user_id=tenant_id)
+            if not user_tenants:
+                return get_data_error_result(message=f"User with id {tenant_id} not found.")
+                
+            # Clone the LLM configuration for the team member
+            TenantLLMService.save(
+                tenant_id=tenant_id,
+                llm_factory=current_user_llm["llm_factory"],
+                llm_name=current_user_llm["llm_name"],
+                model_type=current_user_llm["model_type"],
+                api_key=current_user_llm["api_key"],
+                api_base=current_user_llm["api_base"],
+                max_tokens=current_user_llm["max_tokens"],
+                shared_by=current_user.id
+            )
+            
+            # If make_default is True, update tenant's default model
+            if make_default:
+                tenant_info = TenantService.get_tenant_info(tenant_id)
+                if tenant_info:
+                    tenant_info["llm_id"] = f"{llm_name}@{llm_factory}"
+                    TenantService.update_tenant_info(tenant_id, tenant_info)
+        
+        return get_json_result(data=True)
+    except Exception as e:
+        return server_error_response(e)
+
+@manager.route('/shared_llm_list', methods=['GET'])  # noqa: F821
+@login_required
+def shared_llm_list():
+    """
+    Get list of LLM models that have been shared with the current user.
+    """
+    try:
+        model_type = request.args.get('model_type', None)
+        
+        # Get LLMs shared with the current user
+        shared_llms = LLMService.get_shared_llms(current_user.id, model_type)
+        
+        # Format the response
+        result = {}
+        for llm in shared_llms:
+            factory = llm.get('llm_factory', '')
+            if factory not in result:
+                result[factory] = []
+            
+            # Add shared_by and shared_at info
+            shared_by_user = UserService.get_by_id(llm.get('shared_by'))
+            shared_by_name = shared_by_user.nickname if shared_by_user else "Unknown"
+            
+            llm_info = {
+                'fid': llm.get('llm_factory', ''),
+                'name': llm.get('llm_name', ''),
+                'llm_name': llm.get('llm_name', ''),
+                'available': True,
+                'model_type': llm.get('model_type', ''),
+                'shared_by': shared_by_name,
+                'shared_at': llm.get('shared_at', ''),
+            }
+            result[factory].append(llm_info)
+            
+        return get_json_result(data=result)
     except Exception as e:
         return server_error_response(e)

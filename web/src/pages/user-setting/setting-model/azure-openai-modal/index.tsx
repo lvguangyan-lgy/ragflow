@@ -95,7 +95,7 @@ const AzureOpenAIModal = ({
         <Form.Item<FieldType>
           label={t('modelName')}
           name="llm_name"
-          initialValue="gpt-3.5-turbo"
+          initialValue="gpt-4-turbo"
           rules={[{ required: true, message: t('modelNameMessage') }]}
         >
           <Input placeholder={t('modelNameMessage')} />

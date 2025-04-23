@@ -3,9 +3,9 @@ import { LlmIcon } from '@/components/svg-icon';
 import { useTheme } from '@/components/theme-provider';
 import { LLMFactory } from '@/constants/llm';
 import { useSetModalState, useTranslate } from '@/hooks/common-hooks';
-import { LlmItem, useSelectLlmList } from '@/hooks/llm-hooks';
+import { LlmItem, useSelectLlmList, useShareLlm } from '@/hooks/llm-hooks';
 import { getRealModelName } from '@/utils/llm-util';
-import { CloseCircleOutlined, SettingOutlined } from '@ant-design/icons';
+import { CloseCircleOutlined, SettingOutlined, ShareAltOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -23,7 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { CircleHelp } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import SettingTitle from '../components/setting-title';
 import { isLocalLlmFactory } from '../utils';
 import TencentCloudModal from './Tencent-modal';
@@ -32,6 +32,7 @@ import AzureOpenAIModal from './azure-openai-modal';
 import BedrockModal from './bedrock-modal';
 import FishAudioModal from './fish-audio-modal';
 import GoogleModal from './google-modal';
+import ShareModelModal from './share-model-modal';
 import {
   useHandleDeleteFactory,
   useHandleDeleteLlm,
@@ -68,6 +69,9 @@ const ModelCard = ({ item, clickApiKey }: IModelCardProps) => {
   const { theme } = useTheme();
   const { handleDeleteLlm } = useHandleDeleteLlm(item.name);
   const { handleDeleteFactory } = useHandleDeleteFactory(item.name);
+  const { shareLlm, loading: shareLoading } = useShareLlm();
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | undefined>();
 
   const handleApiKeyClick = () => {
     clickApiKey(item.name);
@@ -75,6 +79,33 @@ const ModelCard = ({ item, clickApiKey }: IModelCardProps) => {
 
   const handleShowMoreClick = () => {
     switchVisible();
+  };
+
+  const handleShareClick = () => {
+    setShareModalVisible(true);
+  };
+
+  const handleShareModelClick = (modelName: string) => () => {
+    setSelectedModel(modelName);
+    setShareModalVisible(true);
+  };
+
+  const handleShareModalOk = async (tenantIds: string[]) => {
+    if (selectedModel) {
+      await shareLlm({
+        llm_factory: item.name,
+        llm_name: selectedModel,
+        tenant_ids: tenantIds,
+        make_default: false
+      });
+    }
+    setShareModalVisible(false);
+    setSelectedModel(undefined);
+  };
+
+  const handleShareModalCancel = () => {
+    setShareModalVisible(false);
+    setSelectedModel(undefined);
   };
 
   return (
@@ -129,13 +160,18 @@ const ModelCard = ({ item, clickApiKey }: IModelCardProps) => {
             size="small"
             dataSource={item.llm}
             className={styles.llmList}
-            renderItem={(item) => (
+            renderItem={(model) => (
               <List.Item>
                 <Space>
-                  {getRealModelName(item.name)}
-                  <Tag color="#b8b8b8">{item.type}</Tag>
+                  {getRealModelName(model.name)}
+                  <Tag color="#b8b8b8">{model.type}</Tag>
+                  <Tooltip title={t('share', { keyPrefix: 'common' })}>
+                    <Button type={'text'} onClick={handleShareModelClick(model.name)}>
+                      <ShareAltOutlined style={{ color: '#1677ff' }} />
+                    </Button>
+                  </Tooltip>
                   <Tooltip title={t('delete', { keyPrefix: 'common' })}>
-                    <Button type={'text'} onClick={handleDeleteLlm(item.name)}>
+                    <Button type={'text'} onClick={handleDeleteLlm(model.name)}>
                       <CloseCircleOutlined style={{ color: '#D92D20' }} />
                     </Button>
                   </Tooltip>
@@ -145,6 +181,14 @@ const ModelCard = ({ item, clickApiKey }: IModelCardProps) => {
           />
         )}
       </Card>
+      <ShareModelModal
+        visible={shareModalVisible}
+        hideModal={handleShareModalCancel}
+        onOk={handleShareModalOk}
+        loading={shareLoading}
+        llmFactory={item.name}
+        llmName={selectedModel}
+      />
     </List.Item>
   );
 };

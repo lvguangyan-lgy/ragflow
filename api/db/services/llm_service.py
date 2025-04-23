@@ -203,6 +203,57 @@ class TenantLLMService(CommonService):
     def get_openai_models(cls):
         objs = cls.model.select().where((cls.model.llm_factory == "OpenAI"), ~(cls.model.llm_name == "text-embedding-3-small"), ~(cls.model.llm_name == "text-embedding-3-large")).dicts()
         return list(objs)
+    
+    @classmethod
+    @DB.connection_context()
+    def get_llm_by_name(cls, llm_name, user_id, llm_factory):
+        """
+        Get a specific LLM configuration by name, user ID, and factory.
+        """
+        try:
+            llm = TenantLLM.select().where(
+                (TenantLLM.llm_name == llm_name) &
+                (TenantLLM.tenant_id == user_id) &
+                (TenantLLM.llm_factory == llm_factory)
+            ).get()
+            return llm.to_dict()
+        except TenantLLM.DoesNotExist:
+            return None
+
+    @classmethod
+    @DB.connection_context()
+    def save_llm(cls, llm_data):
+        """
+        Save an LLM configuration.
+        """
+        tenant_llm = TenantLLM.create(
+            tenant_id=llm_data.get("user_id"),
+            llm_factory=llm_data.get("llm_factory"),
+            llm_name=llm_data.get("llm_name"),
+            model_type=llm_data.get("model_type"),
+            api_key=llm_data.get("api_key"),
+            api_base=llm_data.get("api_base"),
+            max_tokens=llm_data.get("max_tokens"),
+            shared_by=llm_data.get("shared_by"),
+            shared_at=llm_data.get("shared_at")
+        )
+        return tenant_llm
+
+    @classmethod
+    @DB.connection_context()
+    def get_shared_llms(cls, user_id, model_type=None):
+        """
+        Get LLMs that have been shared with the specified user.
+        """
+        query = TenantLLM.select().where(
+            (TenantLLM.tenant_id == user_id) &
+            (TenantLLM.shared_by.is_null(False))
+        )
+        
+        if model_type:
+            query = query.where(TenantLLM.model_type.contains(model_type))
+            
+        return [llm.to_dict() for llm in query]
 
 
 class LLMBundle:

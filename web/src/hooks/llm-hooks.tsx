@@ -344,3 +344,48 @@ export const useDeleteFactory = () => {
 
   return { data, loading, deleteFactory: mutateAsync };
 };
+
+export interface IShareLlmParams {
+  llm_factory: string;
+  llm_name: string;
+  tenant_ids: string[];
+  make_default?: boolean;
+}
+
+export const useShareLlm = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  
+  const {
+    isPending: loading,
+    mutateAsync
+  } = useMutation({
+    mutationKey: ['shareLlm'],
+    mutationFn: async (params: IShareLlmParams) => {
+      const { data } = await userService.share_llm(params);
+      if (data.code === 0) {
+        queryClient.invalidateQueries({ queryKey: ['myLlmList'] });
+        queryClient.invalidateQueries({ queryKey: ['sharedLlmList'] });
+        message.success(t('message.modelShared'));
+      }
+      return data.code;
+    },
+  });
+
+  return { loading, shareLlm: mutateAsync };
+};
+
+export const useFetchSharedLlmList = (
+  modelType?: LlmModelType,
+): IThirdAiModelCollection => {
+  const { data } = useQuery({
+    queryKey: ['sharedLlmList', modelType],
+    initialData: {},
+    queryFn: async () => {
+      const { data } = await userService.shared_llm_list({ model_type: modelType });
+      return data?.data ?? {};
+    },
+  });
+
+  return data;
+};

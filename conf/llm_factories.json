@@ -21,20 +21,6 @@
                     "is_tools": true
                 },
                 {
-                    "llm_name": "gpt-3.5-turbo",
-                    "tags": "LLM,CHAT,4K",
-                    "max_tokens": 4096,
-                    "model_type": "chat",
-                    "is_tools": false
-                },
-                {
-                    "llm_name": "gpt-3.5-turbo-16k-0613",
-                    "tags": "LLM,CHAT,16k",
-                    "max_tokens": 16385,
-                    "model_type": "chat",
-                    "is_tools": false
-                },
-                {
                     "llm_name": "text-embedding-ada-002",
                     "tags": "TEXT EMBEDDING,8K",
                     "max_tokens": 8191,
@@ -75,13 +61,6 @@
                     "max_tokens": 8191,
                     "model_type": "chat",
                     "is_tools": true
-                },
-                {
-                    "llm_name": "gpt-4-32k",
-                    "tags": "LLM,CHAT,32K",
-                    "max_tokens": 32768,
-                    "model_type": "chat",
-                    "is_tools": false
                 },
                 {
                     "llm_name": "tts-1",

@@ -22,6 +22,8 @@ const {
   getSystemTokenList,
   removeSystemToken,
   createSystemToken,
+  share_llm,
+  shared_llm_list,
   getSystemConfig,
   setLangfuseConfig,
 } = api;
@@ -118,6 +120,14 @@ const methods = {
   deleteLangfuseConfig: {
     url: setLangfuseConfig,
     method: 'delete',
+  },
+  share_llm: {
+    url: share_llm,
+    method: 'post',
+  },
+  shared_llm_list: {
+    url: shared_llm_list,
+    method: 'get',
   },
 } as const;
 
